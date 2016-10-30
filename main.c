@@ -291,6 +291,12 @@ int main()
 			bootpAnswer.CHAddr[i] = bootpMsg.CHAddr[i];
 		}
 
+		// copy rquested IP into DHCP gateway & dns
+		for(i=0;i<4;i++){
+			DhcpOps.RO[i]  = requestedIp[i];
+			DhcpOps.DNS[i] = requestedIp[i];
+		}
+		
 		// copy DHCP Options into vendor field
 		memset(&bootpAnswer.Vendor,0,64);
 		memcpy(&bootpAnswer.Vendor,&DhcpOps,sizeof(DhcpOps));
