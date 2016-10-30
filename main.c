@@ -6,6 +6,13 @@
 #include<arpa/inet.h>
 #include <time.h>
 
+
+#ifdef DEBUG
+	#define debug(args...)		fprintf(stdout,"%s:%i ",__FILE__,__LINE__);fprintf(stdout,args);fprintf(stdout,"\r\n")
+#else
+	#define debug(args...)
+#endif
+
 /// 44:65:0D:XX:XX:XX 
 
  
@@ -206,7 +213,7 @@ int main()
 		int recvLen = recvfrom(sockfd, buffer, 512, 0,(struct sockaddr *)&client_sock, &client_sock_len);
 
 		if(recvLen > 0){
-			printf("got: \t%i bytes\n",recvLen);				
+			debug("got: \t%i bytes\n",recvLen);				
 		}	
 		
 		// skip smaller packages
@@ -243,7 +250,7 @@ int main()
 			}
 		}
 		
-		printf("Requested IP: %i.%i.%i.%i\n",requestedIp[0],requestedIp[1],requestedIp[2],requestedIp[3]);
+		debug("Requested IP: %i.%i.%i.%i\n",requestedIp[0],requestedIp[1],requestedIp[2],requestedIp[3]);
 
 
 		struct BOOTP bootpAnswer;
@@ -288,10 +295,10 @@ int main()
 		memset(&bootpAnswer.Vendor,0,64);
 		memcpy(&bootpAnswer.Vendor,&DhcpOps,sizeof(DhcpOps));
 
-
+#ifdef DEBUG
 		dumpBootpMsg(&bootpMsg);
 		dumpBootpMsg(&bootpAnswer);
-		
+#endif		
 		
 		// send packet to client address
 		char ipbuffer[16] = {0};
