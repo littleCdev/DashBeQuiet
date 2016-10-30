@@ -4,6 +4,7 @@
 #include<netinet/udp.h> 
 #include<sys/socket.h>
 #include<arpa/inet.h>
+#include <time.h>
 
 /// 44:65:0D:XX:XX:XX 
 
@@ -158,6 +159,19 @@ int checkForDashMac(char *sMac){
 	return 0;
 }
 
+// just print the time to stdout
+void printTime(){
+	time_t timer;
+    char buffer[26];
+    struct tm* tm_info;
+
+    time(&timer);
+    tm_info = localtime(&timer);
+
+    strftime(buffer, 26, "%Y-%m-%d %H:%M:%S\n", tm_info);
+	printf(buffer);
+}
+
 int main()
 {
 
@@ -207,9 +221,30 @@ int main()
 			printf("no Dashbutton\n");
 			continue;
 		}
-		
+		printTime();
 		printf("yay this is a dash\n");
 		
+		
+		// find the requested IP from dashbutton
+		int i=0;
+		uint8_t requestedIp[] = {0,0,0,0};
+		// 4byte offset Magic keks
+		// 64byte Vendor/Options
+		// Option: 50, Length: 4
+		for(i=4;i<63;i++){
+			if(bootpMsg.Vendor[i] == 50 &&
+			   bootpMsg.Vendor[i+1] == 4){
+//				printf("startbyte for requested IP in vendor: %i\n",i);	   
+				requestedIp[0] = bootpMsg.Vendor[i+2];
+				requestedIp[1] = bootpMsg.Vendor[i+3];
+				requestedIp[2] = bootpMsg.Vendor[i+4];
+				requestedIp[3] = bootpMsg.Vendor[i+5];
+				break;
+			}
+		}
+		
+		printf("Requested IP: %i.%i.%i.%i\n",requestedIp[0],requestedIp[1],requestedIp[2],requestedIp[3]);
+
 
 		struct BOOTP bootpAnswer;
 		bootpAnswer.Op = 2;		// reply
@@ -221,11 +256,11 @@ int main()
 		bootpAnswer.Flags = 0;	// no flags
 		
 		
-		// set client IP= 10.0.1.123
-		bootpAnswer.YIAddr[0]=10;
-		bootpAnswer.YIAddr[1]=0;
-		bootpAnswer.YIAddr[2]=1;
-		bootpAnswer.YIAddr[3]=153;
+		// set from the request
+		bootpAnswer.YIAddr[0]=requestedIp[0];
+		bootpAnswer.YIAddr[1]=requestedIp[1];
+		bootpAnswer.YIAddr[2]=requestedIp[2];
+		bootpAnswer.YIAddr[3]=requestedIp[3];
 				
 		bootpAnswer.CIAddr[0]=0;
 		bootpAnswer.CIAddr[1]=0;
@@ -245,7 +280,6 @@ int main()
 
 		// clear HW.address and copy from request
 		memset(&bootpAnswer.CHAddr,0,16);
-		int i=0;
 		for(i=0;i<bootpMsg.HLen;i++){
 			bootpAnswer.CHAddr[i] = bootpMsg.CHAddr[i];
 		}
@@ -256,11 +290,13 @@ int main()
 
 
 		dumpBootpMsg(&bootpMsg);
-//		dumpBootpMsg(&bootpAnswer);
+		dumpBootpMsg(&bootpAnswer);
 		
 		
 		// send packet to client address
-		client_sock.sin_addr.s_addr = inet_addr("10.0.1.153");
+		char ipbuffer[16] = {0};
+		snprintf(ipbuffer,16,"%i.%i.%i.%i",requestedIp[0],requestedIp[1],requestedIp[2],requestedIp[3]);
+		client_sock.sin_addr.s_addr = inet_addr(ipbuffer);
 
 		
 		int n = sendto(sockfd, &bootpAnswer, sizeof(struct BOOTP), 0, 
